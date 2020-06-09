@@ -293,7 +293,7 @@ public class CustomCameraView extends FrameLayout {
                 if (mCameraView.getMode() == Mode.VIDEO) {
                     stopVideoPlay();
                     if (flowCameraListener != null) {
-                        flowCameraListener.recordSuccess(videoFile);
+                        flowCameraListener.recordSuccess(videoFile,recordTime);
                     }
                     scanPhotoAlbum(videoFile);
                 } else {

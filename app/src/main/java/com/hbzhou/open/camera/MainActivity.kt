@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         // 设置拍照或拍视频回调监听
         flowCamera.setFlowCameraListener(object : FlowCameraListener {
             // 录制完成视频文件返回
-            override fun recordSuccess(file: File) {
+            override fun recordSuccess(file: File,duration:Long){
                 ToastUtils.showLong(file.absolutePath)
                 finish()
             }

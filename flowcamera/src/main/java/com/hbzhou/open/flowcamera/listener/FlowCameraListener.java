@@ -13,7 +13,7 @@ public interface FlowCameraListener {
 
     void captureSuccess(@NonNull File file);
 
-    void recordSuccess(@NonNull File file);
+    void recordSuccess(@NonNull File file,long duration);
 
     void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause);
 }

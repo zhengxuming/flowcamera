@@ -1,5 +1,6 @@
 package com.hbzhou.open.flowcamera;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.SurfaceTexture;
@@ -259,7 +260,7 @@ public class FlowCameraView extends FrameLayout {
                 if (videoFile != null && videoFile.exists()) {
                     stopVideoPlay();
                     if (flowCameraListener != null) {
-                        flowCameraListener.recordSuccess(videoFile);
+                        flowCameraListener.recordSuccess(videoFile,recordTime);
                     }
                     scanPhotoAlbum(videoFile);
                 } else if (photoFile != null && photoFile.exists()) {
@@ -309,6 +310,7 @@ public class FlowCameraView extends FrameLayout {
     }
 
     // 绑定生命周期 否者界面可能一片黑
+    @SuppressLint("MissingPermission")
     public void setBindToLifecycle(LifecycleOwner lifecycleOwner) {
         mVideoView.bindToLifecycle(lifecycleOwner);
         lifecycleOwner.getLifecycle().addObserver((LifecycleEventObserver) (source, event) -> {
