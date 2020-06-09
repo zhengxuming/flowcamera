@@ -30,6 +30,10 @@ class MainActivity : AppCompatActivity() {
 //        flowCamera.setHdrEnable(Hdr.ON)
         // 设置最大可拍摄小视频时长 S
         flowCamera.setRecordVideoMaxTime(10)
+
+        flowCamera.initTakePicDir(filesDir)
+        flowCamera.initRecordVideoDir(filesDir)
+
         // 设置拍照或拍视频回调监听
         flowCamera.setFlowCameraListener(object : FlowCameraListener {
             // 录制完成视频文件返回

@@ -81,6 +81,10 @@ public class CustomCameraView extends FrameLayout {
 
     private File videoFile;
     private File photoFile;
+
+    private File videoDir;
+    private File photoDir;
+
     //切换摄像头按钮的参数
     private int iconSrc;        //图标资源
     private int iconLeft;       //左图标
@@ -105,6 +109,10 @@ public class CustomCameraView extends FrameLayout {
         iconRight = a.getResourceId(R.styleable.CustomCameraView_iconRight, 0);
         duration = a.getInteger(R.styleable.CustomCameraView_duration_max, 10 * 1000);       //没设置默认为10s
         a.recycle();
+
+        videoDir = context.getExternalMediaDirs()[0];
+        photoDir = context.getExternalMediaDirs()[0];
+
         initView();
     }
 
@@ -167,7 +175,7 @@ public class CustomCameraView extends FrameLayout {
             @Override
             public void onPictureTaken(@NonNull PictureResult result) {
                 super.onPictureTaken(result);
-                result.toFile(initTakePicPath(mContext), file -> {
+                result.toFile(initTakePicPath(), file -> {
                     if (file == null || !file.exists()) {
                         Toast.makeText(mContext, "文件不存在!", Toast.LENGTH_LONG).show();
                         return;
@@ -248,7 +256,7 @@ public class CustomCameraView extends FrameLayout {
                     mCameraView.stopVideo();
                 }
                 //mCameraView.takeVideoSnapshot(initStartRecordingPath(mContext));
-                mCameraView.postDelayed(() -> mCameraView.takeVideoSnapshot(initStartRecordingPath(mContext)), 100);
+                mCameraView.postDelayed(() -> mCameraView.takeVideoSnapshot(initStartRecordingPath()), 100);
                 //mCameraView.takeVideo(initStartRecordingPath(mContext));
             }
 
@@ -293,7 +301,7 @@ public class CustomCameraView extends FrameLayout {
                 if (mCameraView.getMode() == Mode.VIDEO) {
                     stopVideoPlay();
                     if (flowCameraListener != null) {
-                        flowCameraListener.recordSuccess(videoFile,recordTime);
+                        flowCameraListener.recordSuccess(videoFile, recordTime);
                     }
                     scanPhotoAlbum(videoFile);
                 } else {
@@ -326,12 +334,20 @@ public class CustomCameraView extends FrameLayout {
                 mContext, new String[]{dataFile.getAbsolutePath()}, new String[]{mimeType}, null);
     }
 
-    public File initTakePicPath(Context context) {
-        return new File(context.getExternalMediaDirs()[0], System.currentTimeMillis() + ".jpg");
+    private File initTakePicPath() {
+        return new File(photoDir, System.currentTimeMillis() + ".jpg");
     }
 
-    public File initStartRecordingPath(Context context) {
-        return new File(context.getExternalMediaDirs()[0], System.currentTimeMillis() + ".mp4");
+    public void initTakePicDir(File dir) {
+        photoDir = dir;
+    }
+
+    private File initStartRecordingPath() {
+        return new File(videoDir, System.currentTimeMillis() + ".mp4");
+    }
+
+    public void initRecordVideoDir(File dir) {
+        videoDir = dir;
     }
 
     /**************************************************

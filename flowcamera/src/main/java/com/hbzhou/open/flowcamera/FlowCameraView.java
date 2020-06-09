@@ -6,7 +6,6 @@ import android.content.res.TypedArray;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.media.MediaScannerConnection;
-import android.net.Uri;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.Surface;
@@ -17,26 +16,22 @@ import android.webkit.MimeTypeMap;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCapture.OutputFileOptions;
 import androidx.camera.core.ImageCaptureException;
-import androidx.camera.core.ImageProxy;
 import androidx.camera.core.VideoCapture;
 import androidx.camera.view.CameraView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
-
 import com.bumptech.glide.Glide;
 import com.hbzhou.open.flowcamera.listener.ClickListener;
 import com.hbzhou.open.flowcamera.listener.FlowCameraListener;
 import com.hbzhou.open.flowcamera.listener.OnVideoPlayPrepareListener;
 import com.hbzhou.open.flowcamera.listener.TypeListener;
 import com.hbzhou.open.flowcamera.util.LogUtil;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
@@ -73,6 +68,8 @@ public class FlowCameraView extends FrameLayout {
     private File videoFile;
     private File photoFile;
 
+    private File videoDir;
+    private File photoDir;
 
     //切换摄像头按钮的参数
     private int iconSrc;        //图标资源
@@ -98,6 +95,10 @@ public class FlowCameraView extends FrameLayout {
         iconRight = a.getResourceId(R.styleable.FlowCameraView_iconRight, 0);
         duration = a.getInteger(R.styleable.FlowCameraView_duration_max, 10 * 1000);       //没设置默认为10s
         a.recycle();
+
+        videoDir = context.getExternalMediaDirs()[0];
+        photoDir = context.getExternalMediaDirs()[0];
+
         initView();
     }
 
@@ -134,7 +135,7 @@ public class FlowCameraView extends FrameLayout {
                 mFlashLamp.setVisibility(INVISIBLE);
                 //mVideoView.setCaptureMode(CameraView.CaptureMode.IMAGE);
 
-                OutputFileOptions.Builder outputFileOptions = new ImageCapture.OutputFileOptions.Builder(photoFile = initTakePicPath(mContext));
+                OutputFileOptions.Builder outputFileOptions = new ImageCapture.OutputFileOptions.Builder(photoFile = initTakePicPath());
                 //测试新版本 CameraView
                 mVideoView.takePicture(outputFileOptions.build(), ContextCompat.getMainExecutor(mContext), new ImageCapture.OnImageSavedCallback() {
                     @Override
@@ -169,7 +170,7 @@ public class FlowCameraView extends FrameLayout {
                 mSwitchCamera.setVisibility(INVISIBLE);
                 mFlashLamp.setVisibility(INVISIBLE);
                 //mVideoView.setCaptureMode(CameraView.CaptureMode.VIDEO);
-                mVideoView.startRecording(initStartRecordingPath(mContext), ContextCompat.getMainExecutor(mContext), new VideoCapture.OnVideoSavedCallback() {
+                mVideoView.startRecording(initStartRecordingPath(), ContextCompat.getMainExecutor(mContext), new VideoCapture.OnVideoSavedCallback() {
                     @Override
                     public void onVideoSaved(@NonNull File file) {
                         videoFile = file;
@@ -293,12 +294,20 @@ public class FlowCameraView extends FrameLayout {
                 mContext, new String[]{dataFile.getAbsolutePath()}, new String[]{mimeType}, null);
     }
 
-    public File initTakePicPath(Context context) {
-        return new File(context.getExternalMediaDirs()[0], System.currentTimeMillis() + ".jpg");
+    private File initTakePicPath() {
+        return new File(photoDir, System.currentTimeMillis() + ".jpg");
     }
 
-    public File initStartRecordingPath(Context context) {
-        return new File(context.getExternalMediaDirs()[0], System.currentTimeMillis() + ".mp4");
+    public void initTakePicDir(File dir) {
+        photoDir = dir;
+    }
+
+    private File initStartRecordingPath() {
+        return new File(videoDir, System.currentTimeMillis() + ".mp4");
+    }
+
+    public void initRecordVideoDir(File dir) {
+        videoDir = dir;
     }
 
     /**************************************************
