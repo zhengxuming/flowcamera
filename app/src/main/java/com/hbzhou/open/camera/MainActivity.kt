@@ -18,9 +18,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val flowCamera = findViewById<FlowCameraView>(R.id.flowCamera)
-        // 绑定生命周期 您就不用关心Camera的开启和关闭了 不绑定无法预览
-        flowCamera.setBindToLifecycle(this)
+        val flowCamera = findViewById<CustomCameraView>(R.id.flowCamera)
+
         // 设置白平衡模式
 //        flowCamera.setWhiteBalance(WhiteBalance.AUTO)
         // 设置只支持单独拍照拍视频还是都支持
@@ -61,5 +60,8 @@ class MainActivity : AppCompatActivity() {
         flowCamera.setLeftClickListener {
             finish()
         }
+
+        // 绑定生命周期 您就不用关心Camera的开启和关闭了 不绑定无法预览
+        flowCamera.setBindToLifecycle(this)
     }
 }

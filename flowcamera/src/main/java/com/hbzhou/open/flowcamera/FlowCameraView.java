@@ -2,10 +2,16 @@ package com.hbzhou.open.flowcamera;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.media.MediaScannerConnection;
+import android.net.Uri;
+import android.provider.MediaStore;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.Surface;
@@ -16,8 +22,12 @@ import android.webkit.MimeTypeMap;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.camera.core.Camera;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.CameraX;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCapture.OutputFileOptions;
 import androidx.camera.core.ImageCaptureException;
@@ -26,13 +36,17 @@ import androidx.camera.view.CameraView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
+
 import com.bumptech.glide.Glide;
 import com.hbzhou.open.flowcamera.listener.ClickListener;
 import com.hbzhou.open.flowcamera.listener.FlowCameraListener;
 import com.hbzhou.open.flowcamera.listener.OnVideoPlayPrepareListener;
 import com.hbzhou.open.flowcamera.listener.TypeListener;
 import com.hbzhou.open.flowcamera.util.LogUtil;
+
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -58,7 +72,7 @@ public class FlowCameraView extends FrameLayout {
 
     private Context mContext;
     private androidx.camera.view.CameraView mVideoView;
-    private ImageView mPhoto;
+    private ImageView mPhotoIv;
     private ImageView mSwitchCamera;
     private ImageView mFlashLamp;
     private CaptureLayout mCaptureLayout;
@@ -107,7 +121,7 @@ public class FlowCameraView extends FrameLayout {
         View view = LayoutInflater.from(mContext).inflate(R.layout.flow_camera_view, this);
         mVideoView = view.findViewById(R.id.video_preview);
         mTextureView = view.findViewById(R.id.mVideo);
-        mPhoto = view.findViewById(R.id.image_photo);
+        mPhotoIv = view.findViewById(R.id.image_photo);
         mSwitchCamera = view.findViewById(R.id.image_switch);
         mSwitchCamera.setImageResource(iconSrc);
         mFlashLamp = view.findViewById(R.id.image_flash);
@@ -121,6 +135,7 @@ public class FlowCameraView extends FrameLayout {
         mVideoView.enableTorch(true);
         // 设置支持拍照和拍视频
         mVideoView.setCaptureMode(CameraView.CaptureMode.MIXED);
+        mVideoView.setCameraLensFacing(CameraSelector.LENS_FACING_BACK);
 
         mCaptureLayout = view.findViewById(R.id.capture_layout);
         mCaptureLayout.setDuration(duration);
@@ -133,11 +148,11 @@ public class FlowCameraView extends FrameLayout {
             public void takePictures() {
                 mSwitchCamera.setVisibility(INVISIBLE);
                 mFlashLamp.setVisibility(INVISIBLE);
-                //mVideoView.setCaptureMode(CameraView.CaptureMode.IMAGE);
+//                mVideoView.setCaptureMode(CameraView.CaptureMode.IMAGE);
 
-                OutputFileOptions.Builder outputFileOptions = new ImageCapture.OutputFileOptions.Builder(photoFile = initTakePicPath());
+                ImageCapture.OutputFileOptions outputFileOptions = new ImageCapture.OutputFileOptions.Builder(photoFile = initTakePicPath()).build();
                 //测试新版本 CameraView
-                mVideoView.takePicture(outputFileOptions.build(), ContextCompat.getMainExecutor(mContext), new ImageCapture.OnImageSavedCallback() {
+                mVideoView.takePicture(outputFileOptions, ContextCompat.getMainExecutor(mContext), new ImageCapture.OnImageSavedCallback() {
                     @Override
                     public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
                         if (!photoFile.exists()) {
@@ -145,10 +160,30 @@ public class FlowCameraView extends FrameLayout {
                             return;
                         }
 
+                        if (mVideoView.getCameraLensFacing() == CameraSelector.LENS_FACING_FRONT) {
+
+                            Bitmap bitmap = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
+
+                            Matrix matrix = new Matrix();
+                            //镜子效果
+                            matrix.setScale(-1, 1);
+                            matrix.postTranslate(bitmap.getWidth(), 0);
+                            bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+
+                            File tempFile = saveBitmap(bitmap);
+
+                            photoFile.delete();
+
+                            photoFile = tempFile;
+
+                            bitmap.recycle();
+                        }
+
+
                         Glide.with(mContext)
                                 .load(photoFile)
-                                .into(mPhoto);
-                        mPhoto.setVisibility(View.VISIBLE);
+                                .into(mPhotoIv);
+                        mPhotoIv.setVisibility(View.VISIBLE);
                         mCaptureLayout.startTypeBtnAnimator();
 
                         // If the folder selected is an external media directory, this is unnecessary
@@ -169,7 +204,7 @@ public class FlowCameraView extends FrameLayout {
             public void recordStart() {
                 mSwitchCamera.setVisibility(INVISIBLE);
                 mFlashLamp.setVisibility(INVISIBLE);
-                //mVideoView.setCaptureMode(CameraView.CaptureMode.VIDEO);
+//                mVideoView.setCaptureMode(CameraView.CaptureMode.VIDEO);
                 mVideoView.startRecording(initStartRecordingPath(), ContextCompat.getMainExecutor(mContext), new VideoCapture.OnVideoSavedCallback() {
                     @Override
                     public void onVideoSaved(@NonNull File file) {
@@ -259,16 +294,16 @@ public class FlowCameraView extends FrameLayout {
             @Override
             public void confirm() {
                 if (videoFile != null && videoFile.exists()) {
-                    stopVideoPlay();
                     if (flowCameraListener != null) {
-                        flowCameraListener.recordSuccess(videoFile,recordTime);
+                        flowCameraListener.recordSuccess(videoFile, recordTime);
                     }
+                    stopVideoPlay();
                     scanPhotoAlbum(videoFile);
                 } else if (photoFile != null && photoFile.exists()) {
-                    mPhoto.setVisibility(INVISIBLE);
                     if (flowCameraListener != null) {
                         flowCameraListener.captureSuccess(photoFile);
                     }
+                    mPhotoIv.setVisibility(INVISIBLE);
                     scanPhotoAlbum(photoFile);
                 }
             }
@@ -278,6 +313,31 @@ public class FlowCameraView extends FrameLayout {
                 leftClickListener.onClick();
             }
         });
+    }
+
+    /**
+     * 保存指纹图片
+     *
+     * @param bitmap
+     */
+    private File saveBitmap(Bitmap bitmap) {
+        try {
+            File file = new File(photoDir, System.currentTimeMillis() + ".jpg");
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            fos.flush();
+            fos.close();
+
+            return file;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public void setCameraLensFacing(int lensFacing){
+        mVideoView.setCameraLensFacing(lensFacing);
     }
 
     /**
@@ -319,8 +379,9 @@ public class FlowCameraView extends FrameLayout {
     }
 
     // 绑定生命周期 否者界面可能一片黑
-    @SuppressLint("MissingPermission")
+    @SuppressLint({"MissingPermission", "RestrictedApi"})
     public void setBindToLifecycle(LifecycleOwner lifecycleOwner) {
+        CameraX.unbindAll();
         mVideoView.bindToLifecycle(lifecycleOwner);
         lifecycleOwner.getLifecycle().addObserver((LifecycleEventObserver) (source, event) -> {
             LogUtil.i("event---", event.toString());
@@ -398,7 +459,7 @@ public class FlowCameraView extends FrameLayout {
         if (photoFile != null && photoFile.exists() && photoFile.delete()) {
             LogUtil.i("photoFile is clear");
         }
-        mPhoto.setVisibility(INVISIBLE);
+        mPhotoIv.setVisibility(INVISIBLE);
         mSwitchCamera.setVisibility(VISIBLE);
         mFlashLamp.setVisibility(VISIBLE);
         mVideoView.setVisibility(View.VISIBLE);

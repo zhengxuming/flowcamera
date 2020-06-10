@@ -18,6 +18,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.camera.core.VideoCapture;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
@@ -35,6 +37,7 @@ import com.otaliastudios.cameraview.PictureResult;
 import com.otaliastudios.cameraview.VideoResult;
 import com.otaliastudios.cameraview.controls.Audio;
 import com.otaliastudios.cameraview.controls.Engine;
+import com.otaliastudios.cameraview.controls.Flash;
 import com.otaliastudios.cameraview.controls.Hdr;
 import com.otaliastudios.cameraview.controls.Mode;
 import com.otaliastudios.cameraview.controls.WhiteBalance;
@@ -60,7 +63,7 @@ public class CustomCameraView extends FrameLayout {
     private CameraView mCameraView;
     private ImageView mPhoto;
     private ImageView mSwitchCamera;
-    //private ImageView mFlashLamp;
+    private ImageView mFlashLamp;
     private CaptureLayout mCaptureLayout;
     private MediaPlayer mMediaPlayer;
     private TextureView mTextureView;
@@ -124,14 +127,14 @@ public class CustomCameraView extends FrameLayout {
         mPhoto = view.findViewById(R.id.image_photo);
         mSwitchCamera = view.findViewById(R.id.image_switch);
         mSwitchCamera.setImageResource(iconSrc);
-//        mFlashLamp = view.findViewById(R.id.image_flash);
-//        setFlashRes();
-//        mFlashLamp.setOnClickListener(v -> {
-//            type_flash++;
-//            if (type_flash > 0x023)
-//                type_flash = TYPE_FLASH_AUTO;
-//            setFlashRes();
-//        });
+        mFlashLamp = view.findViewById(R.id.image_flash);
+        setFlashRes();
+        mFlashLamp.setOnClickListener(v -> {
+            type_flash++;
+            if (type_flash > 0x023)
+                type_flash = TYPE_FLASH_AUTO;
+            setFlashRes();
+        });
         mCaptureLayout = view.findViewById(R.id.capture_layout);
         mCaptureLayout.setDuration(duration);
         mCaptureLayout.setIconSrc(iconLeft, iconRight);
@@ -241,30 +244,30 @@ public class CustomCameraView extends FrameLayout {
             @Override
             public void takePictures() {
                 mSwitchCamera.setVisibility(INVISIBLE);
-                //mFlashLamp.setVisibility(INVISIBLE);
-                mCameraView.setMode(Mode.PICTURE);
+                mFlashLamp.setVisibility(INVISIBLE);
+//                mCameraView.setMode(Mode.PICTURE);
                 mCameraView.takePictureSnapshot();
-                //mCameraView.postDelayed(() -> mCameraView.takePicture(), 100);
+//                mCameraView.postDelayed(() -> mCameraView.takePicture(), 100);
             }
 
             @Override
             public void recordStart() {
                 mSwitchCamera.setVisibility(INVISIBLE);
-                //mFlashLamp.setVisibility(INVISIBLE);
-                mCameraView.setMode(Mode.VIDEO);
+                mFlashLamp.setVisibility(INVISIBLE);
+//                mCameraView.setMode(Mode.VIDEO);
                 if (mCameraView.isTakingVideo()) {
                     mCameraView.stopVideo();
                 }
-                //mCameraView.takeVideoSnapshot(initStartRecordingPath(mContext));
+//                mCameraView.takeVideoSnapshot(initStartRecordingPath());
                 mCameraView.postDelayed(() -> mCameraView.takeVideoSnapshot(initStartRecordingPath()), 100);
-                //mCameraView.takeVideo(initStartRecordingPath(mContext));
+//                mCameraView.takeVideo(initStartRecordingPath());
             }
 
             @Override
             public void recordShort(final long time) {
                 recordTime = time;
                 mSwitchCamera.setVisibility(VISIBLE);
-                //mFlashLamp.setVisibility(VISIBLE);
+                mFlashLamp.setVisibility(VISIBLE);
                 mCaptureLayout.resetCaptureLayout();
                 mCaptureLayout.setTextWithAnimation("录制时间过短");
                 mCameraView.stopVideo();
@@ -292,13 +295,23 @@ public class CustomCameraView extends FrameLayout {
         mCaptureLayout.setTypeLisenter(new TypeListener() {
             @Override
             public void cancel() {
+                if (videoFile!=null){
+                    videoFile.delete();
+                    videoFile=null;
+                }
+
+                if (photoFile!=null){
+                    photoFile.delete();
+                    photoFile=null;
+                }
+
                 stopVideoPlay();
                 resetState();
             }
 
             @Override
             public void confirm() {
-                if (mCameraView.getMode() == Mode.VIDEO) {
+                if (videoFile!=null) {
                     stopVideoPlay();
                     if (flowCameraListener != null) {
                         flowCameraListener.recordSuccess(videoFile, recordTime);
@@ -419,22 +432,22 @@ public class CustomCameraView extends FrameLayout {
         this.leftClickListener = clickListener;
     }
 
-//    private void setFlashRes() {
-//        switch (type_flash) {
-//            case TYPE_FLASH_AUTO:
-//                mFlashLamp.setImageResource(R.drawable.ic_flash_auto);
-//                mCameraView.setFlash(Flash.AUTO);
-//                break;
-//            case TYPE_FLASH_ON:
-//                mFlashLamp.setImageResource(R.drawable.ic_flash_on);
-//                mCameraView.setFlash(Flash.ON);
-//                break;
-//            case TYPE_FLASH_OFF:
-//                mFlashLamp.setImageResource(R.drawable.ic_flash_off);
-//                mCameraView.setFlash(Flash.OFF);
-//                break;
-//        }
-//    }
+    private void setFlashRes() {
+        switch (type_flash) {
+            case TYPE_FLASH_AUTO:
+                mFlashLamp.setImageResource(R.drawable.ic_flash_auto);
+                mCameraView.setFlash(Flash.AUTO);
+                break;
+            case TYPE_FLASH_ON:
+                mFlashLamp.setImageResource(R.drawable.ic_flash_on);
+                mCameraView.setFlash(Flash.ON);
+                break;
+            case TYPE_FLASH_OFF:
+                mFlashLamp.setImageResource(R.drawable.ic_flash_off);
+                mCameraView.setFlash(Flash.OFF);
+                break;
+        }
+    }
 
     /**
      * 重置状态
@@ -454,7 +467,7 @@ public class CustomCameraView extends FrameLayout {
             }
         }
         mSwitchCamera.setVisibility(VISIBLE);
-//        mFlashLamp.setVisibility(VISIBLE);
+        mFlashLamp.setVisibility(VISIBLE);
         mCameraView.setVisibility(View.VISIBLE);
         mCaptureLayout.resetCaptureLayout();
     }
